@@ -1,0 +1,52 @@
+﻿<Window x:Class="WPF.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:WPF"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="450" Width="800" SizeChanged="Window_SizeChanged">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="600*"/>
+            <ColumnDefinition Width="200*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="390*"/>
+            <RowDefinition Height="60*"/>
+        </Grid.RowDefinitions>
+
+        <Button Content="Load" HorizontalAlignment="Left" Margin="161,0,0,0" VerticalAlignment="Center" Width="75" Click="Button_Click" RenderTransformOrigin="0.815,-0.365" Grid.Row="2"/>
+        <Button Content="Save" HorizontalAlignment="Left" Margin="362,0,0,0" VerticalAlignment="Center" Width="76" Click="Button_Click_1" Grid.Row="2"/>
+        <DataGrid x:Name="data_grid1" ItemsSource="{Binding}" MaxColumnWidth="135" Width="180" RenderTransformOrigin="0.498,0.488" VerticalAlignment="Top" MinColumnWidth="80" AutoGenerateColumns="False" Grid.Column="1" Margin="0,213,0,0">
+            <DataGrid.Columns>
+                <DataGridTextColumn Width="*" Header="x"  Binding="{Binding X , Mode=TwoWay}"/>
+                <DataGridTextColumn Width="*" Header="f(x)" Binding="{Binding Y ,Mode=TwoWay}" />
+
+            </DataGrid.Columns>
+        </DataGrid>
+        <ListBox x:Name="List_Box1"  ItemsSource="{Binding}" VerticalAlignment="Top" RenderTransformOrigin="0.5,0.5" Width="180" Grid.Column="1" Margin="0,10,0,0"  >
+            <ListBox.RenderTransform>
+                <TransformGroup>
+                    <ScaleTransform ScaleX="1"/>
+                    <SkewTransform/>
+                    <RotateTransform/>
+                    <TranslateTransform/>
+                </TransformGroup>
+            </ListBox.RenderTransform>
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel>
+                        <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" Content="{Binding Name}" >
+                        </CheckBox>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+        <Button Content="+" Margin="0,0,100,0" Grid.Row="1" Width="41" Height="20" Grid.Column="1" Click="Button_Click_2"/>
+        <Button Content="-" Margin="127,0,0,0" Grid.Row="1" Height="20" Grid.Column="1" Width="40" Click="Button_Click_3"/>
+        <Canvas x:Name="canvas1" MinWidth="590" MinHeight="360" Margin="5,5,0,0"/>
+
+    </Grid>
+</Window>
+
