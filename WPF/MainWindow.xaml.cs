@@ -35,6 +35,9 @@ namespace WPF
     public partial class MainWindow : Window
     {
         ObservableCollection<Graphic> Graphics;
+        List<Brush> ColorList;
+        List<string> ColorsList;
+
 
         double dx = 30, dy = 30;
         Point StartPoint = new Point(0, 0);//new Point(2 * size_of_marks, canvas1.ActualHeight - 5 * size_of_marks);
@@ -62,11 +65,32 @@ namespace WPF
 
             def_gr.IsSelected = 1;
 
+            def_gr.Color = 0;
+
             Graphics.Add(def_gr);
+
+            ColorsList = new List<string>();
+            ColorsList.Add("Azure");
+            ColorsList.Add("DarkSalmon");
+            ColorsList.Add("Khaki");
+            ColorsList.Add("MediumTurquoise");
+            ColorsList.Add("PaleVioletRed");
+
+
+            ColorList = new List<Brush>();
+            ColorList.Add(Brushes.Azure);
+            ColorList.Add(Brushes.DarkSalmon);
+            ColorList.Add(Brushes.Khaki);
+            ColorList.Add(Brushes.MediumTurquoise);
+            ColorList.Add(Brushes.PaleVioletRed);
+
 
             InitializeComponent();
             data_grid1.DataContext = Graphics[cur_graphic].Points;
             List_Box1.DataContext = Graphics;
+            ComboBox1.DataContext = ColorsList;
+            ComboBox1.SelectedItem = Graphics[cur_graphic].Color;
+
             canvas1.Background = Brushes.LightSlateGray;
 
 
@@ -121,14 +145,17 @@ namespace WPF
                             data.Points.Add(new point_type(double.Parse(splitted[0]), double.Parse(splitted[1])));
                         }
                     }
-                    data.Name = openFileDialog.FileName;
+                    data.Name = openFileDialog.FileName.Split('\\').Last();
                     data.IsSelected = 1;
+                    data.Color = (Graphics.Last().Color + 1) % 5;
+                    // цвет
                     Graphics.Add(data);
                     Cur_graphic = Graphics.Count - 1;
 
                 }
             }
 
+            Draw();
 
         }
 
@@ -145,6 +172,37 @@ namespace WPF
             Draw();
         }
 
+        private void List_Box1_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            Cur_graphic = (sender as ListBox).SelectedIndex;
+        }
+
+        private void CheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+            //List_Box1.SelectedItem = sender;
+            Draw();
+        }
+
+        private void ListViewItem_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is ListBoxItem i)
+                i.IsSelected = true;
+
+            Draw();
+
+        }
+
+        private void CheckBox_Unchecked(object sender, RoutedEventArgs e)
+        {
+            Draw();
+        }
+
+        private void ComboBox1_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            Graphics[cur_graphic].Color = (sender as ComboBox).SelectedIndex;
+            Draw();
+        }
+
         private void Button_Click_3(object sender, RoutedEventArgs e) // delete point
         {
             int cur_point = data_grid1.SelectedIndex;
@@ -153,7 +211,7 @@ namespace WPF
                 cur_point = 0;
             }
             Graphics[cur_graphic].Points.RemoveAt(cur_point);
-
+            Draw();
         }
 
         private void Draw()
@@ -338,24 +396,28 @@ namespace WPF
             // draw graphic
             for (int i = 0; i < Graphics.Count; i++)
             {
-                Polyline line = new Polyline();
-                line.StrokeThickness = 2;
-                line.Stroke = Brushes.Red;
-                for (int j = 0; j < Graphics[i].Points.Count; j++)
+                if (Graphics[i].IsSelected == 1)
                 {
-                    Point p = new Point(Graphics[i].Points[j].X, Graphics[i].Points[j].Y);
-              
-                    p.X *= ScalCoefx* dx;
-                    p.Y *= ScalCoefy* dy;
-                    p.X += StartPoint.X;
-                    p.Y = StartPoint.Y - p.Y;
+                    Polyline line = new Polyline();
+                    line.StrokeThickness = 2;
+                    // цвет
+                    line.Stroke = ColorList[Graphics[i].Color];
+                    for (int j = 0; j < Graphics[i].Points.Count; j++)
+                    {
+                        Point p = new Point(Graphics[i].Points[j].X, Graphics[i].Points[j].Y);
 
-                    line.Points.Add(p);
+                        p.X *= ScalCoefx * dx;
+                        p.Y *= ScalCoefy * dy;
+                        p.X += StartPoint.X;
+                        p.Y = StartPoint.Y - p.Y;
+
+                        line.Points.Add(p);
+
+                    }
+                    canvas1.Children.Add(line);
                 }
-                canvas1.Children.Add(line);
             }
         }
-
         /*public SeriesCollection SeriesCollection { get; set; }
 
         public string[] Labels { get; set; }
@@ -440,10 +502,6 @@ namespace WPF
         {
 
         }*/
-
-
-
-
     }
 
     public class point_type : INotifyPropertyChanged
@@ -478,7 +536,18 @@ namespace WPF
             }
         }
         public string Name { get; set; }
-        public int IsSelected { get; set; }
+        int _IsSelected = 1;
+        public int IsSelected
+        {
+            get { return _IsSelected; }
+            set
+            {
+                _IsSelected = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public int Color { get; set; }
 
         public event PropertyChangedEventHandler PropertyChanged;
 
