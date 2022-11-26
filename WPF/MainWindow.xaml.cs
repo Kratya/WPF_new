@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data.SqlTypes;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -37,36 +38,37 @@ namespace WPF
         ObservableCollection<Graphic> Graphics;
         List<Brush> ColorList;
         List<string> ColorsList;
+        axis Axis;
 
-
-        double dx = 30, dy = 30;
-        Point StartPoint = new Point(0, 0);//new Point(2 * size_of_marks, canvas1.ActualHeight - 5 * size_of_marks);
-
-        double ScalCoefx = 1, ScalCoefy = 1;
+        point_type StartPoint = new point_type(300, 250);
 
         int cur_graphic = 0;
-        public int Cur_graphic { get { return cur_graphic; } set { cur_graphic = value; data_grid1.DataContext = Graphics[cur_graphic].Points; } }
-        //ObservableCollection<ObservableCollection<Point>> Grafics;
-        //ObservableCollection<Point> Grafic_cur;
+        public int Cur_graphic
+        {
+            get
+            { return cur_graphic; } 
+            set 
+            { 
+                cur_graphic = value; 
+                data_grid1.DataContext = Graphics[cur_graphic].Points; 
+                ComboBox1.SelectedIndex = Graphics[cur_graphic].Color; 
+            } 
+        }
 
         public MainWindow()
         {
             cur_graphic = 0;
             Graphics = new ObservableCollection<Graphic>();
+
             Graphic def_gr = new Graphic();
             def_gr.Points = new ObservableCollection<point_type>();
-
             def_gr.Points.Add(new point_type(1, 1));
             def_gr.Points.Add(new point_type(2, 2));
             def_gr.Points.Add(new point_type(3, 3));
             def_gr.Points.Add(new point_type(4, 4));
-
             def_gr.Name = "default";
-
             def_gr.IsSelected = 1;
-
             def_gr.Color = 0;
-
             Graphics.Add(def_gr);
 
             ColorsList = new List<string>();
@@ -76,7 +78,6 @@ namespace WPF
             ColorsList.Add("MediumTurquoise");
             ColorsList.Add("PaleVioletRed");
 
-
             ColorList = new List<Brush>();
             ColorList.Add(Brushes.Azure);
             ColorList.Add(Brushes.DarkSalmon);
@@ -84,21 +85,16 @@ namespace WPF
             ColorList.Add(Brushes.MediumTurquoise);
             ColorList.Add(Brushes.PaleVioletRed);
 
+            Axis = new axis();
 
             InitializeComponent();
-            data_grid1.DataContext = Graphics[cur_graphic].Points;
             List_Box1.DataContext = Graphics;
             ComboBox1.DataContext = ColorsList;
-            ComboBox1.SelectedItem = Graphics[cur_graphic].Color;
+            ComboBox1.SelectedIndex = Graphics[cur_graphic].Color;
+            data_grid1.DataContext = Graphics[cur_graphic].Points;
 
             canvas1.Background = Brushes.LightSlateGray;
-
-
-            //canvas1.Width = 600;
-            //canvas1.Height = 360;
-            StartPoint = new Point(2 * 5, canvas1.MinHeight - 5 * 5);
-
-            //Draw();
+            canvas1.Focus();
         }
 
         private void Button_Click_1(object sender, RoutedEventArgs e) // save
@@ -179,7 +175,6 @@ namespace WPF
 
         private void CheckBox_Checked(object sender, RoutedEventArgs e)
         {
-            //List_Box1.SelectedItem = sender;
             Draw();
         }
 
@@ -187,9 +182,6 @@ namespace WPF
         {
             if (sender is ListBoxItem i)
                 i.IsSelected = true;
-
-            Draw();
-
         }
 
         private void CheckBox_Unchecked(object sender, RoutedEventArgs e)
@@ -214,296 +206,460 @@ namespace WPF
             Draw();
         }
 
+        private void canvas1_KeyDown(object sender, KeyEventArgs e)
+        {
+
+            switch (e.Key)
+            {
+                case Key.Left: 
+                    StartPoint.X -= 10; 
+                    break;
+                case Key.Right:
+                    StartPoint.X += 10;
+                    break;
+                case Key.Up:
+                    StartPoint.Y -= 10;
+                    break;
+                case Key.Down:
+                    StartPoint.Y += 10;
+                    break;
+                case Key.PageUp:
+                    Axis.Cur_step_x += 5;
+                    Axis.Cur_step_y += 5;
+                    break;
+                case Key.PageDown:
+                    Axis.Cur_step_x -= 5;
+                    Axis.Cur_step_y -= 5;
+                    break;
+                default: 
+                    return;
+            }
+            Draw();
+            e.Handled = true;
+        }
+
+        private void canvas1_MouseEnter(object sender, MouseEventArgs e)
+        {
+            (sender as Canvas).Focus();
+        }
+
+        private Point WindowPoint(double x_real, double y_real, double ScalCoefx, double ScalCoefy, double dx, double dy)
+        {
+            Point res = new Point(x_real, y_real);
+            res.X *= ScalCoefx;
+            res.Y *= ScalCoefy;
+            res.X = res.X + dx;
+            res.Y = -(res.Y + dy);
+            return res;
+        }
         private void Draw()
         {
             canvas1.Children.Clear();
+            
+            double margin = 30;      
+            
+            double rightBoard = canvas1.ActualWidth - margin;
+            double downBoard = canvas1.ActualHeight - margin;
+            double lxGlobal = StartPoint.X;
+            double lyGlobal = StartPoint.Y;
+            if (StartPoint.X > rightBoard)
+                lxGlobal = rightBoard;
+            else if (StartPoint.X < margin)
+                lxGlobal = margin;
 
-            //Line l1 = new Line();
-            //l1.X1 = 100;
-            //l1.Y1 = 100;
-            //l1.X2 = 300;
-            //l1.Y2 = 300;
-            //l1.StrokeThickness = 5;
-            //l1.Stroke = Brushes.Black;
-            //
-            //canvas1.Children.Add(l1);
+            if (StartPoint.Y > downBoard)
+                lyGlobal = downBoard;
+            else if (StartPoint.Y < margin)
+                lyGlobal = margin;
 
             // draw ox
-            double size_of_marks = 5;
-            double margin = 2 * size_of_marks;
-            StartPoint.X = 300;
-
-            double rightBord = canvas1.ActualWidth - 3 * margin;
-            double downBoard = canvas1.ActualHeight - 3 * margin;
-            double lxGlobal = StartPoint.X < rightBord ? StartPoint.X : rightBord;
-            double lyGlobal = StartPoint.Y < downBoard ? StartPoint.Y : downBoard;
-
-            Line l = new Line();
-            l.X1 = lxGlobal;
-            l.Y1 = lyGlobal;
-            l.X2 = canvas1.ActualWidth - margin;
-            l.Y2 = lyGlobal;
-            l.StrokeThickness = 1;
-            l.Stroke = Brushes.Black;
-            canvas1.Children.Add(l);
-
-            double value1 = 0;
-            TextBlock text1 = new TextBlock();
-            text1.Text = value1.ToString();
-            Canvas.SetLeft(text1, lxGlobal + margin / 2);
-            Canvas.SetTop(text1, lyGlobal + margin / 2);
-            canvas1.Children.Add(text1);
-
-            // по х в положительном направлении
-            for (double xi = lxGlobal, i = 0; xi <= canvas1.ActualWidth - margin /*|| StartPoint.X - xi - 5 > 0*/; xi += dx, i++)
+            point_type min_x = new point_type(margin, lyGlobal);
+            point_type max_x = new point_type(rightBoard, lyGlobal);
+            Axis.PrepareAxisX(min_x, max_x, StartPoint);
+            canvas1.Children.Add(Axis.Axis_line_x);
+            foreach(var el in Axis.Tic_lables_x)
             {
-                Line px_i = new Line();
-                px_i.X1 = xi;
-                px_i.Y1 = lyGlobal + size_of_marks;
-                px_i.X2 = xi;
-                px_i.Y2 = lyGlobal - size_of_marks;
-                px_i.StrokeThickness = 1;
-                px_i.Stroke = Brushes.Black;
-                canvas1.Children.Add(px_i);
-
-                if (i != 0)
-                {
-                    double value = i * ScalCoefx;
-                    TextBlock text = new TextBlock();
-                    text.Text = value.ToString();
-                    Canvas.SetLeft(text, xi - size_of_marks);
-                    Canvas.SetTop(text, lyGlobal + size_of_marks);
-                    canvas1.Children.Add(text);
-                }
+                canvas1.Children.Add(el);
             }
-
-
-            // по х в отрицательном направлении
-
-            
-
-            Line l2 = new Line();
-            l2.X1 = margin;
-            l2.Y1 = lyGlobal;
-            l2.X2 = lxGlobal;
-            l2.Y2 = lyGlobal;
-            l2.StrokeThickness = 1;
-            l2.Stroke = Brushes.Black;
-            canvas1.Children.Add(l2);
-
-            
-            // по х в положительном направлении
-            for (double xi = l2.X2, i = 0; xi > margin; xi -= dx, i++)
+            foreach (var el in Axis.Tic_lines_x)
             {
-                Line px_i = new Line();
-                px_i.X1 = xi;
-                px_i.Y1 = lyGlobal + size_of_marks;
-                px_i.X2 = xi;
-                px_i.Y2 = lyGlobal - size_of_marks;
-                px_i.StrokeThickness = 1;
-                px_i.Stroke = Brushes.Black;
-                canvas1.Children.Add(px_i);
-
-                if (i != 0)
-                {
-                    double value = -i * ScalCoefx;
-                    TextBlock text = new TextBlock();
-                    text.Text = value.ToString();
-                    Canvas.SetLeft(text, xi - size_of_marks);
-                    Canvas.SetTop(text, StartPoint.Y + size_of_marks);
-
-                    canvas1.Children.Add(text);
-                }
-
+                canvas1.Children.Add(el);
             }
-
-
 
             // draw oy
-
-            //StartPoint.X += 30;
-
-
-            Line l1 = new Line();
-            l1.X1 = lxGlobal;
-            l1.Y1 = lyGlobal;
-            l1.X2 = lxGlobal; /*canvas1.ActualHeight - 2 * size_of_marks;*/
-            l1.Y2 = 2 * size_of_marks; /*canvas1.ActualHeight;*/
-            l1.StrokeThickness = 1;
-            l1.Stroke = Brushes.Black;
-            canvas1.Children.Add(l1);
-
-            // по y в положительном направлении
-
-            for (double yi = lyGlobal, i = 0; yi >= margin /*|| StartPoint.Y - yi - 5 > 0*/; yi -= dy, i++)
+            point_type min_y = new point_type(lxGlobal, margin);
+            point_type max_y = new point_type(lxGlobal, downBoard);
+            Axis.PrepareAxisY(min_y, max_y, StartPoint);
+            canvas1.Children.Add(Axis.Axis_line_y);
+            foreach (var el in Axis.Tic_lables_y)
             {
-                Line px_i = new Line();
-                px_i.X1 = lxGlobal - size_of_marks;
-                px_i.Y1 = yi;
-                px_i.X2 = lxGlobal + size_of_marks;
-                px_i.Y2 = yi;
-                px_i.StrokeThickness = 1;
-                px_i.Stroke = Brushes.Black;
-                canvas1.Children.Add(px_i);
-                if (i != 0)
-                {
-                    double value = i * ScalCoefx;
-                    TextBlock text = new TextBlock();
-                    text.Text = value.ToString();
-                    Canvas.SetBottom(text, canvas1.ActualHeight - yi - size_of_marks);
-                    Canvas.SetLeft(text, lxGlobal + margin);
-
-                    canvas1.Children.Add(text);
-                }
+                canvas1.Children.Add(el);
             }
-
-
-
-            // по y в отрицательном направлении
-
-
-            Line l3 = new Line();
-            l3.X1 = lxGlobal;
-            l3.Y1 = lyGlobal;
-            l3.X2 = lxGlobal; /*canvas1.ActualHeight - 2 * size_of_marks;*/
-            l3.Y2 = canvas1.ActualHeight - margin; /*canvas1.ActualHeight;*/
-            l3.StrokeThickness = 1;
-            l3.Stroke = Brushes.Black;
-            canvas1.Children.Add(l3);
-
-            for (double yi = lyGlobal, i = 0; yi <= canvas1.ActualHeight - margin /*|| StartPoint.Y - yi - 5 > 0*/; yi += dy, i++)
+            foreach (var el in Axis.Tic_lines_y)
             {
-                Line px_i = new Line();
-                px_i.X1 = lxGlobal - size_of_marks;
-                px_i.Y1 = yi;
-                px_i.X2 = lxGlobal + size_of_marks;
-                px_i.Y2 = yi;
-                px_i.StrokeThickness = 1;
-                px_i.Stroke = Brushes.Black;
-                canvas1.Children.Add(px_i);
-                if (i != 0)
-                {
-                    double value = -i * ScalCoefx;
-                    TextBlock text = new TextBlock();
-                    text.Text = value.ToString();
-                    Canvas.SetBottom(text, canvas1.ActualHeight - yi - size_of_marks);
-                    Canvas.SetLeft(text, lxGlobal + margin);
-
-                    canvas1.Children.Add(text);
-                }
+                canvas1.Children.Add(el);
             }
 
             // draw graphic
+            double ScalCoefx = Axis.Scale_x, ScalCoefy = Axis.Scale_y;
+            double x_min_real = (margin - StartPoint.X) / ScalCoefx;
+            double x_max_real = (rightBoard - StartPoint.X) / ScalCoefx;
+            double y_min_real = -(downBoard - StartPoint.Y) / ScalCoefy;
+            double y_max_real = -(margin - StartPoint.Y) / ScalCoefy;
+            int skip_point; // -1 no point, 0 point was add, 1 left, 2 right, 3 top, 4 bottom
             for (int i = 0; i < Graphics.Count; i++)
             {
                 if (Graphics[i].IsSelected == 1)
                 {
+                    skip_point = -1;
+                    Point p_pre = new Point();
                     Polyline line = new Polyline();
                     line.StrokeThickness = 2;
                     // цвет
                     line.Stroke = ColorList[Graphics[i].Color];
                     for (int j = 0; j < Graphics[i].Points.Count; j++)
                     {
+                        if (Graphics[i].Points[j].X < x_min_real)
+                        {
+                            skip_point = 1;
+                            continue;
+                        }
+                        if(Graphics[i].Points[j].X > x_max_real)
+                        {
+                            // добавить пересечение с правой границей
+                            if(Graphics[i].GetVal(x_max_real) > y_max_real)
+                                line.Points.Add(WindowPoint(Graphics[i].GetArg(y_max_real, Graphics[i].Points[j].X), y_max_real, ScalCoefx, ScalCoefy, StartPoint.X, -StartPoint.Y));
+                            else if(Graphics[i].GetVal(x_max_real) < y_min_real)
+                                line.Points.Add(WindowPoint(Graphics[i].GetArg(y_min_real, Graphics[i].Points[j].X), y_min_real, ScalCoefx, ScalCoefy, StartPoint.X, -StartPoint.Y));
+                            else
+                                line.Points.Add(WindowPoint(x_max_real, Graphics[i].GetVal(x_max_real), ScalCoefx, ScalCoefy, StartPoint.X, -StartPoint.Y));
+                            
+                            break;
+                        }
+                        if (Graphics[i].Points[j].Y < y_min_real)
+                        {
+                            if (skip_point == 0)
+                            {
+                                line.Points.Add(WindowPoint(Graphics[i].GetArg(y_min_real, Graphics[i].Points[j].X), y_min_real, ScalCoefx, ScalCoefy, StartPoint.X, -StartPoint.Y));
+                                canvas1.Children.Add(line);
+                                line = new Polyline();
+                                line.StrokeThickness = 2;
+                                // цвет
+                                line.Stroke = ColorList[Graphics[i].Color];
+                            }
+                            if(skip_point == 3)
+                            {
+                                line.Points.Add(WindowPoint(Graphics[i].GetArg(y_max_real, Graphics[i].Points[j].X), y_max_real, ScalCoefx, ScalCoefy, StartPoint.X, -StartPoint.Y));
+                                line.Points.Add(WindowPoint(Graphics[i].GetArg(y_min_real, Graphics[i].Points[j].X), y_min_real, ScalCoefx, ScalCoefy, StartPoint.X, -StartPoint.Y));
+                                canvas1.Children.Add(line);
+                                line = new Polyline();
+                                line.StrokeThickness = 2;
+                                // цвет
+                                line.Stroke = ColorList[Graphics[i].Color];
+                            }
+                            skip_point = 4;
+                            continue;
+                        }
+                        if (Graphics[i].Points[j].Y > y_max_real)
+                        {
+                            if(skip_point == 0)
+                            {
+                                line.Points.Add(WindowPoint(Graphics[i].GetArg(y_max_real, Graphics[i].Points[j].X), y_max_real, ScalCoefx, ScalCoefy, StartPoint.X, -StartPoint.Y));
+
+                                canvas1.Children.Add(line);
+                                line = new Polyline();
+                                line.StrokeThickness = 2;
+                                // цвет
+                                line.Stroke = ColorList[Graphics[i].Color];
+                            }
+                            if(skip_point == 4)
+                            {
+                                line.Points.Add(WindowPoint(Graphics[i].GetArg(y_min_real, Graphics[i].Points[j].X), y_min_real, ScalCoefx, ScalCoefy, StartPoint.X, -StartPoint.Y));
+                                line.Points.Add(WindowPoint(Graphics[i].GetArg(y_max_real, Graphics[i].Points[j].X), y_max_real, ScalCoefx, ScalCoefy, StartPoint.X, -StartPoint.Y));
+
+                                canvas1.Children.Add(line);
+                                line = new Polyline();
+                                line.StrokeThickness = 2;
+                                // цвет
+                                line.Stroke = ColorList[Graphics[i].Color];
+                            }
+                            skip_point = 3;
+
+                            continue;
+                        }
+
                         Point p = new Point(Graphics[i].Points[j].X, Graphics[i].Points[j].Y);
 
-                        p.X *= ScalCoefx * dx;
-                        p.Y *= ScalCoefy * dy;
+                        p.X *= ScalCoefx;
+                        p.Y *= ScalCoefy;
                         p.X += StartPoint.X;
                         p.Y = StartPoint.Y - p.Y;
 
+                        // добавить пересечение с границей
+                        switch(skip_point)
+                        {
+                            case 1: // left
+                                if (Graphics[i].GetVal(x_min_real) > y_max_real)
+                                    line.Points.Add(WindowPoint(Graphics[i].GetArg(y_max_real, Graphics[i].Points[j].X), y_max_real, ScalCoefx, ScalCoefy, StartPoint.X, -StartPoint.Y));
+                                else if (Graphics[i].GetVal(x_min_real) < y_min_real)
+                                    line.Points.Add(WindowPoint(Graphics[i].GetArg(y_min_real, Graphics[i].Points[j].X), y_min_real, ScalCoefx, ScalCoefy, StartPoint.X, -StartPoint.Y));
+                                else
+                                    line.Points.Add(WindowPoint(x_min_real, Graphics[i].GetVal(x_min_real), ScalCoefx, ScalCoefy, StartPoint.X, -StartPoint.Y));
+                                break;
+                            case 3: // top
+                                line.Points.Add(WindowPoint(Graphics[i].GetArg(y_max_real, Graphics[i].Points[j].X), y_max_real, ScalCoefx, ScalCoefy, StartPoint.X, -StartPoint.Y));
+                                break;
+                            case 4: // bottom
+                                line.Points.Add(WindowPoint(Graphics[i].GetArg(y_min_real, Graphics[i].Points[j].X), y_min_real, ScalCoefx, ScalCoefy, StartPoint.X, -StartPoint.Y));
+                                break;
+                            default:
+                                break;
+                        }
                         line.Points.Add(p);
+                        skip_point = 0;
 
                     }
-                    canvas1.Children.Add(line);
-                }
-            }
-        }
-        /*public SeriesCollection SeriesCollection { get; set; }
-
-        public string[] Labels { get; set; }
-
-        public Func<double, string> YFormatter { get; set; }
-
-        private void Button_Click(object sender, RoutedEventArgs e)
-        {
-            SeriesCollection = new SeriesCollection
-         {
-            new LineSeries
-            {
-                  Values = new ChartValues<ObservablePoint>
-                  {
-                     new ObservablePoint(0,10),
-                     new ObservablePoint(2,11),
-                     new ObservablePoint(3,12),
-                     new ObservablePoint(4,13),
-                     new ObservablePoint(6,14)
-                  },
-                  Title = "graph1",
-                  Fill = Brushes.Transparent,
-                  PointGeometrySize = 10,
-                  PointGeometry = DefaultGeometries.Square
-            },
-
-
-            new LineSeries
-            {
-                  Values = new ChartValues<ObservablePoint>
-                  {
-                     new ObservablePoint(0,5),
-                     new ObservablePoint(2,5),
-                     new ObservablePoint(3,3),
-                     new ObservablePoint(4,15),
-                     new ObservablePoint(6,20)
-                  },
-                  Title = "graph2",
-                  Stroke = Brushes.Red,
-                  Fill = Brushes.Transparent,
-                  PointGeometrySize = 10,
-
-            }
-
-
-
-         };
-
-            YFormatter = value => value.ToString("C");
-            DataContext = this;
-
-        }
-
-        private void Button_Click_1(object sender, RoutedEventArgs e)
-        {
-            OpenFileDialog ofd = new OpenFileDialog();
-            ofd.Filter = "Файлы (* .txt)| *.txt|Все файлы (*.*)|*.*";
-            ofd.FilterIndex = 1;
-            ofd.RestoreDirectory = true;
-            ofd.ShowDialog();
-            if (ofd.FileName != "") //Проверка на выбор файла
-            {
-                using (var reader = File.OpenText(ofd.FileName))
-                {
-                    //Пропусть первую строку в файле
-                    // if (!reader.EndOfStream)
-                    // reader.ReadLine();
-
-                    while (!reader.EndOfStream)
+                    // добавить пересечение с границей
+                    if (line.Points.Count != 0)
                     {
-                        string line = reader.ReadLine();
-
-
+                        switch (skip_point)
+                        {
+                            case 3: // top
+                                
+                                line.Points.Add(WindowPoint(Graphics[i].GetArg(y_max_real, (line.Points.Last().X - StartPoint.X) / ScalCoefx), y_max_real, ScalCoefx, ScalCoefy, StartPoint.X, -StartPoint.Y));
+                                break;
+                            case 4: // bottom
+                                line.Points.Add(WindowPoint(Graphics[i].GetArg(y_min_real, (line.Points.Last().X - StartPoint.X) / ScalCoefx), y_min_real, ScalCoefx, ScalCoefy, StartPoint.X, -StartPoint.Y));
+                                break;
+                            default:
+                                break;
+                        }
+                        canvas1.Children.Add(line);
                     }
-
                 }
             }
-            else MessageBox.Show("Файл не найден");
         }
 
-        private void Graf_Loaded(object sender, RoutedEventArgs e)
+        private void canvas1_MouseWheel(object sender, MouseWheelEventArgs e)
         {
-
-        }*/
+            Axis.Cur_step_x += e.Delta;
+            Axis.Cur_step_y += e.Delta;
+            Draw();
+        }
     }
+    public class axis
+    {
+        double size_of_marks = 5;
+        double min_step = 40;
+        double max_step = 400;
 
+        double hx = 40;
+        double hy = 40;
+        double scale_x = 1; // сколько 1 в hx_px по х
+        double scale_y = 1; // сколько 1 в hy_px по y
+
+
+        public double Min_step { get { return min_step; } }
+        public double Max_step { get { return max_step; } }
+
+        public double Cur_step_x
+        {
+            get
+            {
+                return hx;
+            }
+            set
+            {
+                if (value <= Min_step)
+                {
+                    hx = Max_step;
+                    scale_x *= max_step / min_step;
+                }
+                else if (value >= Max_step)
+                {
+                    hx = Min_step;
+                    scale_x /= max_step / min_step;
+                }
+                else
+                {
+                    hx = value;
+                }
+            }
+        }
+        public double Scale_x // на сколько надо умножить 1, чтобы получить оконные координаты 1
+        {
+            get
+            {
+                return hx / scale_x;
+            }
+        }
+        public Line Axis_line_x { get; set; }
+        public List<Line> Tic_lines_x { get; set; }
+        public List<TextBlock> Tic_lables_x { get; set; }
+        public double Cur_step_y
+        {
+            get
+            {
+                return hy;
+            }
+            set
+            {
+                if (value <= Min_step)
+                {
+                    hy = Max_step;
+                    scale_y *= max_step / min_step;
+                }
+                else if (value >= Max_step)
+                {
+                    hy = Min_step;
+                    scale_y /= max_step / min_step;
+                }
+                else
+                {
+                    hy = value;
+                }
+            }
+        }
+        public double Scale_y // на сколько надо умножить 1, чтобы получить оконные координаты 1
+        {
+            get
+            {
+                return  hy / scale_y;
+            }
+        }
+        public Line Axis_line_y { get; set; }
+        public List<Line> Tic_lines_y { get; set; }
+        public List<TextBlock> Tic_lables_y { get; set; }
+
+
+        public void PrepareAxisX(point_type min_point, point_type max_point, point_type start_point)
+        {
+            Axis_line_x = new Line();
+            Axis_line_x.X1 = min_point.X;
+            Axis_line_x.Y1 = min_point.Y;
+            Axis_line_x.X2 = max_point.X;
+            Axis_line_x.Y2 = max_point.Y;
+            Axis_line_x.StrokeThickness = 1;
+            Axis_line_x.Stroke = Brushes.Black;
+
+            Tic_lines_x = new List<Line>();
+            Tic_lables_x = new List<TextBlock>();
+
+            point_type loc_start = new point_type(start_point);
+            double label_1 = 0;
+            double cur_h = hx;
+            if (hx / min_step >= 2)
+            {
+                cur_h = hx / 2;
+            }
+            if (hx / min_step >= 5)
+            {
+                cur_h = hx / 5;
+            }
+            while (loc_start.X < min_point.X)
+            {
+                loc_start.X += cur_h;
+                label_1 += (scale_x / hx * cur_h);
+            }
+            while (loc_start.X - cur_h > min_point.X)
+            {
+                loc_start.X -= cur_h;
+                label_1 -= (scale_x / hx * cur_h);
+            }
+
+            int i = 0;
+            double label_start = label_1;
+            for (double xi = loc_start.X; xi <= max_point.X; xi = loc_start.X + i * cur_h, label_1 = label_start + i * (scale_x / hx * cur_h))
+            {
+                Line px_i = new Line();
+                px_i.X1 = xi;
+                px_i.Y1 = Axis_line_x.Y1 + size_of_marks;
+                px_i.X2 = xi;
+                px_i.Y2 = Axis_line_x.Y1 - size_of_marks;
+                px_i.StrokeThickness = 1;
+                px_i.Stroke = Brushes.Black;
+                Tic_lines_x.Add(px_i);
+
+                TextBlock text = new TextBlock();
+
+                if (Math.Abs(label_1 / cur_h) < 1e-14)
+                {
+                    label_1 = 0;
+                    Canvas.SetLeft(text, xi - 2 * size_of_marks);
+                }
+                else
+                {
+                    Canvas.SetLeft(text, xi - size_of_marks);
+                }
+                text.Text = label_1.ToString("0.##e0");
+                text.FontSize = 10;
+                Canvas.SetTop(text, Axis_line_x.Y1 + size_of_marks);
+                Tic_lables_x.Add(text);
+                i++;
+            }
+        }
+        public void PrepareAxisY(point_type min_point, point_type max_point, point_type start_point)
+        {
+            Axis_line_y = new Line();
+            Axis_line_y.X1 = min_point.X;
+            Axis_line_y.Y1 = min_point.Y;
+            Axis_line_y.X2 = max_point.X;
+            Axis_line_y.Y2 = max_point.Y;
+            Axis_line_y.StrokeThickness = 1;
+            Axis_line_y.Stroke = Brushes.Black;
+
+            Tic_lines_y = new List<Line>();
+            Tic_lables_y = new List<TextBlock>();
+
+            point_type loc_start = new point_type(start_point);
+            double label_1 = 0;
+            double cur_h = hy;
+            if (hy / min_step >= 2)
+            {
+                cur_h = hy / 2;
+            }
+            if (hy / min_step >= 5)
+            {
+                cur_h = hy / 5;
+            }
+            while (loc_start.Y > max_point.Y)
+            {
+                loc_start.Y -= cur_h;
+                label_1 += (scale_y / hy * cur_h);
+            }
+            while (loc_start.Y + cur_h <= max_point.Y)
+            {
+                loc_start.Y += cur_h;
+                label_1 -= (scale_y / hy * cur_h);
+            }
+
+            int i = 0;
+            double label_start = label_1;
+            for (double yi = loc_start.Y; yi >= min_point.Y; yi = loc_start.Y - i * cur_h, label_1 = label_start + i * (scale_y / hy * cur_h))
+            {
+                Line px_i = new Line();
+                px_i.X1 = Axis_line_y.X1 - size_of_marks;
+                px_i.Y1 = yi;
+                px_i.X2 = Axis_line_y.X1 + size_of_marks;
+                px_i.Y2 = yi;
+                px_i.StrokeThickness = 1;
+                px_i.Stroke = Brushes.Black;
+                Tic_lines_y.Add(px_i);
+
+                if (Math.Abs(label_1) > 1e-14)
+                {
+                    TextBlock text = new TextBlock();
+                    text.Text = label_1.ToString("0.##e0");
+                    text.FontSize = 10;
+
+                    Canvas.SetTop(text, yi - 2 * size_of_marks);
+                    Canvas.SetLeft(text, Axis_line_y.X1 + 2 * size_of_marks);
+                    Tic_lables_y.Add(text);
+                }
+                    i++;
+            }
+        }
+    }
     public class point_type : INotifyPropertyChanged
     {
         public double X { get; set; }
@@ -514,6 +670,11 @@ namespace WPF
         {
             X = x;
             Y = y;
+        }
+        public point_type(point_type p)
+        {
+            X = p.X;
+            Y = p.Y;
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -554,6 +715,49 @@ namespace WPF
         protected void OnPropertyChanged([CallerMemberName] string propertyName = "")
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        public double GetVal(double x)
+        {
+            double res = 0;
+            for(int i = 1; i < Points.Count; i++)
+            {
+                if (x >= Points[i - 1].X && x <= Points[i].X)
+                {
+                    res = (Points[i].Y - Points[i - 1].Y) / (Points[i].X - Points[i - 1].X) * (x - Points[i - 1].X) + Points[i - 1].Y;
+                    break;
+                }
+            }
+            return res;
+        }
+        public double GetArg(double y)
+        {
+            double res = 0;
+            for (int i = 1; i < Points.Count; i++)
+            {
+                if (y >= Points[i - 1].Y && y <= Points[i].Y)
+                {
+                    res = (Points[i].X - Points[i - 1].X) / (Points[i].Y - Points[i - 1].Y) * (y - Points[i - 1].Y) + Points[i - 1].X;
+                    break;
+                }
+            }
+            return res;
+        }
+        public double GetArg(double y, double x)
+        {
+            double res = 0;
+            int i;
+            for (i = 1; i < Points.Count; i++)
+            {
+                if (x >= Points[i - 1].X && x <= Points[i].X)
+                {
+                    res = (Points[i].X - Points[i - 1].X) / (Points[i].Y - Points[i - 1].Y) * (y - Points[i - 1].Y) + Points[i - 1].X;
+                    break;
+                }
+            }
+            if (i == Points.Count)
+                i = 0;
+            return res;
         }
     }
 }
